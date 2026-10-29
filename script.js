@@ -10,13 +10,7 @@ const startButton = document.getElementById("startBtn");
 const pauseButton = document.getElementById("pauseBtn");
 const resetButton = document.getElementById("resetBtn");
 const progressBar = document.getElementById("progressFill");
-const progressLabel = document.getElementById("progressLabel");
-const progressTrack = document.getElementById("progressTrack");
 const milestoneMessage = document.getElementById("milestoneMessage");
-const difficultyDescription = document.getElementById("difficultyDescription");
-const canvasWrap = document.getElementById("canvasWrap");
-const menuToggle = document.getElementById("menuToggle");
-const mainNav = document.getElementById("mainNav");
 
 // Difficulty settings
 const difficultySettings = {
