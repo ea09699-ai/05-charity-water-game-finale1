@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="description"
+    content="Play Wings for Water, a game inspired by the mission to bring clean water to everyone."
+  >
+
+  <title>Wings for Water | Play for a Purpose</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="Wings for Water home">
+      <span class="brand-drop" aria-hidden="true">◆</span>
+      <span>WINGS <span class="brand-highlight">FOR WATER</span></span>
+    </a>
+
+    <button
+      class="menu-toggle"
+      id="menuToggle"
+      type="button"
+      aria-label="Open navigation menu"
+      aria-expanded="false"
+      aria-controls="mainNav"
+    >
+      ☰
+    </button>
+
+    <nav id="mainNav" class="main-nav" aria-label="Main navigation">
+      <a href="#home">Home</a>
+      <a href="#game">Play</a>
+      <a href="#how-to-play">How to Play</a>
+      <a href="#mission">Our Mission</a>
+      <a class="nav-cta" href="https://www.charitywater.org/" target="_blank" rel="noopener noreferrer">
+        Learn More ↗
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-content">
+        <p class="eyebrow">
+          <span class="status-dot"></span>
+          PLAY FOR A PURPOSE
+        </p>
+
+        <h1>WINGS FOR <span>WATER.</span></h1>
+
+        <p class="hero-description">
+          Fly through the future. Dodge the obstacles. Discover why clean
+          water matters.
+        </p>
+
+        <a class="primary-button" href="#game">
+          PLAY THE GAME <span aria-hidden="true">→</span>
+        </a>
+
+        <p class="hero-note">
+          A small game can start a meaningful conversation.
+        </p>
+      </div>
+
+      <div class="hero-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="hero-water-drop">💧</div>
+        <span class="spark spark-one">✦</span>
+        <span class="spark spark-two">✧</span>
+        <span class="spark spark-three">✦</span>
+        <div class="hero-art-caption">EVERY DROP MATTERS</div>
+      </div>
+    </section>
+
+    <section class="game-section section" id="game">
+      <div class="section-heading">
+        <p class="eyebrow">READY, SET, FLY</p>
+        <h2>Your mission starts here.</h2>
+        <p>Collect water drops, avoid red obstacles, and reach 10 points to win.</p>
+      </div>
+
+      <div class="game-card">
+        <div class="game-topbar">
+          <div class="game-label">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span>WATER FLIGHT</span>
+          </div>
+
+          <div class="score-group">
+            <div class="score-box">
+              <span>SCORE</span>
+              <strong id="score">0</strong>
+            </div>
+
+            <div class="score-box">
+              <span>BEST</span>
+              <strong id="best">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="canvas-wrap"
+          id="canvasWrap"
+          tabindex="0"
+          aria-label="Game area. Press Space or tap to flap."
+        >
+          <canvas
+            id="gameCanvas"
+            width="800"
+            height="460"
+            aria-label="A flying bird avoids pipes and collects water drops. Red obstacles reduce your score."
+          >
+            Your browser does not support HTML canvas. Please use a modern browser to play.
+          </canvas>
+        </div>
+
+        <div class="game-status" aria-live="polite" aria-atomic="true">
+          <span id="statusText">Ready for takeoff? Start your game!</span>
+        </div>
+
+        <div class="mission-progress">
+          <div class="progress-heading">
+            <span>YOUR FLIGHT GOAL</span>
+            <span id="progressLabel">0 / 10 points</span>
+          </div>
+
+          <div
+            class="progress-track"
+            id="progressTrack"
+            role="progressbar"
+            aria-label="Progress toward the game goal"
+            aria-valuemin="0"
+            aria-valuemax="10"
+            aria-valuenow="0"
+          >
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="game-controls">
+          <button class="primary-button" id="startBtn" type="button">
+            START GAME
+          </button>
+
+          <button class="secondary-button" id="pauseBtn" type="button" disabled>
+            PAUSE
+          </button>
+
+          <button class="reset-button" id="resetBtn" type="button">
+            ↻ RESET
+          </button>
+        </div>
+
+        <p class="controls-hint">
+          <strong>PC:</strong> Spacebar or click
+          <span aria-hidden="true">•</span>
+          <strong>Mobile:</strong> Tap the game
+          <span aria-hidden="true">•</span>
+          <strong>Pause:</strong> P or the Pause button
+        </p>
+      </div>
+    </section>
+
+    <section class="how-section section" id="how-to-play">
+      <div class="section-heading">
+        <p class="eyebrow">THREE SIMPLE STEPS</p>
+        <h2>Learn to fly.</h2>
+        <p>Stay alert, collect points, and avoid anything that gets in your way.</p>
+      </div>
+
+      <div class="steps-grid">
+        <article class="info-card">
+          <span class="step-number">01</span>
+          <div class="info-icon" aria-hidden="true">🪽</div>
+          <h3>Keep flapping</h3>
+          <p>Press Space, click, or tap to help your bird rise above the obstacles.</p>
+        </article>
+
+        <article class="info-card">
+          <span class="step-number">02</span>
+          <div class="info-icon" aria-hidden="true">💧</div>
+          <h3>Collect water drops</h3>
+          <p>Each yellow water drop earns one point. Reach 10 points to win.</p>
+        </article>
+
+        <article class="info-card">
+          <span class="step-number">03</span>
+          <div class="info-icon" aria-hidden="true">⚠</div>
+          <h3>Avoid red obstacles</h3>
+          <p>Red obstacles take away two points. Your score cannot fall below zero.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="mission-section section" id="mission">
+      <div class="mission-copy">
+        <p class="eyebrow">THE REASON WE FLY</p>
+        <h2>Clean water changes <span>everything.</span></h2>
+
+        <p>
+          Wings for Water uses a simple game to introduce players to a much
+          bigger issue: access to clean and safe water. Behind every point is
+          a chance to start a conversation about why water matters.
+        </p>
+
+        <p>
+          This independent student game is inspired by
+          <strong>charity: water</strong> and its mission to bring clean and
+          safe drinking water to people around the world.
+        </p>
+
+        <a
+          class="primary-button"
+          href="https://www.charitywater.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          EXPLORE THE MISSION ↗
+        </a>
+      </div>
+
+      <div class="mission-visual" aria-hidden="true">
+        <div class="mission-circle">
+          <span class="mission-drop">💧</span>
+          <span class="mission-circle-label">CLEAN WATER</span>
+          <span class="mission-circle-label">BRIGHTER FUTURE</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing-banner">
+      <p class="eyebrow">YOUR NEXT FLIGHT AWAITS</p>
+      <h2>Play again. Beat your best.</h2>
+      <a class="dark-button" href="#game">BACK TO THE GAME ↑</a>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand footer-brand" href="#home">WINGS <span>FOR WATER</span></a>
+
+    <p>
+      A student-created game inspired by charity: water's clean-water mission.
+    </p>
+
+    <p class="disclaimer">
+      Wings for Water is an independent educational project and is not an
+      official charity: water game or affiliated product.
+    </p>
+
+    <a
+      href="https://www.charitywater.org/"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Visit charitywater.org ↗
+    </a>
+  </footer>
+</body>
+</html>
