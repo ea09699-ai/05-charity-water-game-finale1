@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +10,14 @@
   >
 
   <title>Wings for Water | Play for a Purpose</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  >
+
   <link rel="stylesheet" href="styles.css">
   <script src="script.js" defer></script>
 </head>
@@ -38,7 +45,12 @@
       <a href="#game">Play</a>
       <a href="#how-to-play">How to Play</a>
       <a href="#mission">Our Mission</a>
-      <a class="nav-cta" href="https://www.charitywater.org/" target="_blank" rel="noopener noreferrer">
+      <a
+        class="nav-cta"
+        href="https://www.charitywater.org/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         Learn More ↗
       </a>
     </nav>
@@ -83,10 +95,27 @@
       <div class="section-heading">
         <p class="eyebrow">READY, SET, FLY</p>
         <h2>Your mission starts here.</h2>
-        <p>Collect water drops, avoid red obstacles, and reach 10 points to win.</p>
+        <p>
+          Collect water drops, avoid red obstacles, and reach your selected
+          score goal to win.
+        </p>
       </div>
 
       <div class="game-card">
+        <div class="difficulty-control">
+          <label for="difficultySelect">CHOOSE YOUR DIFFICULTY</label>
+
+          <select id="difficultySelect">
+            <option value="easy">Easy — 5 points to win</option>
+            <option value="normal" selected>Normal — 10 points to win</option>
+            <option value="hard">Hard — 15 points to win</option>
+          </select>
+
+          <p class="difficulty-description" id="difficultyDescription">
+            Easy mode: wider gaps and slower obstacles.
+          </p>
+        </div>
+
         <div class="game-topbar">
           <div class="game-label">
             <span class="live-dot" aria-hidden="true"></span>
@@ -97,6 +126,11 @@
             <div class="score-box">
               <span>SCORE</span>
               <strong id="score">0</strong>
+            </div>
+
+            <div class="score-box">
+              <span>GOAL</span>
+              <strong id="goalScore">10</strong>
             </div>
 
             <div class="score-box">
@@ -116,15 +150,22 @@
             id="gameCanvas"
             width="800"
             height="460"
-            aria-label="A flying bird avoids pipes and collects water drops. Red obstacles reduce your score."
+            aria-label="A flying bird avoids obstacles and collects water drops."
           >
-            Your browser does not support HTML canvas. Please use a modern browser to play.
+            Your browser does not support HTML canvas.
           </canvas>
         </div>
 
         <div class="game-status" aria-live="polite" aria-atomic="true">
           <span id="statusText">Ready for takeoff? Start your game!</span>
         </div>
+
+        <div
+          id="milestoneMessage"
+          class="milestone-message"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
 
         <div class="mission-progress">
           <div class="progress-heading">
@@ -166,6 +207,10 @@
           <span aria-hidden="true">•</span>
           <strong>Pause:</strong> P or the Pause button
         </p>
+
+        <p class="sound-note">
+          Sound effects play when you interact with the game.
+        </p>
       </div>
     </section>
 
@@ -173,7 +218,9 @@
       <div class="section-heading">
         <p class="eyebrow">THREE SIMPLE STEPS</p>
         <h2>Learn to fly.</h2>
-        <p>Stay alert, collect points, and avoid anything that gets in your way.</p>
+        <p>
+          Stay alert, collect points, and avoid anything that gets in your way.
+        </p>
       </div>
 
       <div class="steps-grid">
@@ -181,21 +228,27 @@
           <span class="step-number">01</span>
           <div class="info-icon" aria-hidden="true">🪽</div>
           <h3>Keep flapping</h3>
-          <p>Press Space, click, or tap to help your bird rise above the obstacles.</p>
+          <p>
+            Press Space, click, or tap to help your bird rise above the obstacles.
+          </p>
         </article>
 
         <article class="info-card">
           <span class="step-number">02</span>
           <div class="info-icon" aria-hidden="true">💧</div>
           <h3>Collect water drops</h3>
-          <p>Each yellow water drop earns one point. Reach 10 points to win.</p>
+          <p>
+            Collect yellow water drops to earn points and get closer to your goal.
+          </p>
         </article>
 
         <article class="info-card">
           <span class="step-number">03</span>
           <div class="info-icon" aria-hidden="true">⚠</div>
           <h3>Avoid red obstacles</h3>
-          <p>Red obstacles take away two points. Your score cannot fall below zero.</p>
+          <p>
+            Red obstacles take away two points. Your score cannot fall below zero.
+          </p>
         </article>
       </div>
     </section>
@@ -244,7 +297,9 @@
   </main>
 
   <footer class="site-footer">
-    <a class="brand footer-brand" href="#home">WINGS <span>FOR WATER</span></a>
+    <a class="brand footer-brand" href="#home">
+      WINGS <span>FOR WATER</span>
+    </a>
 
     <p>
       A student-created game inspired by charity: water's clean-water mission.
@@ -255,13 +310,27 @@
       official charity: water game or affiliated product.
     </p>
 
-    <a
-      href="https://www.charitywater.org/"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Visit charitywater.org ↗
-    </a>
+    <div class="footer-links">
+      <a
+        href="https://www.charitywater.org/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Visit charity: water ↗
+      </a>
+
+      <a
+        href="https://www.charitywater.org/donate"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Donate to clean water ↗
+      </a>
+    </div>
+
+    <p class="copyright">
+      Wings for Water · Play for a purpose.
+    </p>
   </footer>
 </body>
 </html>

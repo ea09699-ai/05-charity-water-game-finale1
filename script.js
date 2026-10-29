@@ -1,963 +1,609 @@
-
-/* =========================================
-   WINGS FOR WATER
-   charity: water brand colors + game logic
-   ========================================= */
-
-// Get the game canvas and drawing tools.
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Get the HTML elements.
-const scoreElement = document.getElementById("score");
-const bestElement = document.getElementById("best");
-const startButton = document.getElementById("startBtn");
-const pauseButton = document.getElementById("pauseBtn");
-const resetButton = document.getElementById("resetBtn");
+const scoreDisplay = document.getElementById("score");
+const goalDisplay = document.getElementById("goal");
+const bestDisplay = document.getElementById("bestScore");
+const statusDisplay = document.getElementById("gameStatus");
+const difficultySelect = document.getElementById("difficulty");
+const startButton = document.getElementById("startButton");
+const pauseButton = document.getElementById("pauseButton");
+const resetButton = document.getElementById("resetButton");
+const progressBar = document.getElementById("progressBar");
+const milestoneMessage = document.getElementById("milestoneMessage");
 
-const statusText = document.getElementById("statusText");
-const progressFill = document.getElementById("progressFill");
-const progressLabel = document.getElementById("progressLabel");
-const progressTrack = document.getElementById("progressTrack");
+const difficultySettings = {
+  easy: {
+    gravity: 0.20,
+    flapStrength: -4.5,
+    pipeGap: 210,
+    pipeSpeed: 2.0,
+    pipeSpawnRate: 105,
+    winScore: 5
+  },
 
-const menuToggle = document.getElementById("menuToggle");
-const mainNav = document.getElementById("mainNav");
+  medium: {
+    gravity: 0.30,
+    flapStrength: -5.0,
+    pipeGap: 175,
+    pipeSpeed: 2.7,
+    pipeSpawnRate: 95,
+    winScore: 10
+  },
 
-// Charity: water brand colors.
-const colors = {
-  yellow: "#FFC907",
-  blue: "#2E9DF7",
-  lightBlue: "#8BD1CB",
-  green: "#4FCB53",
-  orange: "#FF902A",
-  red: "#F5402C",
-  darkGreen: "#159A48",
-  pink: "#F16061",
-  navy: "#07131E",
-  white: "#FFFFFF"
+  hard: {
+    gravity: 0.38,
+    flapStrength: -5.5,
+    pipeGap: 155,
+    pipeSpeed: 3.2,
+    pipeSpawnRate: 90,
+    winScore: 15
+  }
 };
 
-// Game settings.
-const gravity = 0.30;
-const flapStrength = -6.5;
-const pipeWidth = 65;
-const pipeGap = 165;
-const pipeSpeed = 2.7;
-const winScore = 10;
-
-// Game variables.
-let bird;
-let pipes = [];
-let waterDrops = [];
-let penaltyObstacles = [];
-let confetti = [];
-
+let settings = difficultySettings.medium;
 let score = 0;
-let best = loadBestScore();
-let frame = 0;
-
+let bestScore = Number(localStorage.getItem("wingsForWaterBest")) || 0;
 let gameRunning = false;
 let gameOver = false;
 let gameWon = false;
-let paused = false;
+let frame = 0;
+let animationId;
+let pipes = [];
+let waterDrops = [];
+let obstacles = [];
+let particles = [];
 
-// Load the best score saved in this browser.
-function loadBestScore() {
-  try {
-    return Number(
-      localStorage.getItem("wingsForWaterBest")
-    ) || 0;
-  } catch (error) {
-    return 0;
-  }
+const bird = {
+  x: 110,
+  y: canvas.height / 2,
+  width: 30,
+  height: 24,
+  velocity: 0,
+  rotation: 0
+};
+
+const milestones = [
+  { percentage: 30, message: "🌱 Great start! Keep going!" },
+  { percentage: 60, message: "💧 You're making a difference!" },
+  { percentage: 80, message: "🌊 Almost there! Keep flying!" }
+];
+
+let reachedMilestones = [];
+
+bestDisplay.textContent = bestScore;
+
+function applyDifficulty() {
+  const selectedMode = difficultySelect.value;
+  settings = difficultySettings[selectedMode] || difficultySettings.medium;
+  goalDisplay.textContent = settings.winScore;
+  updateProgress();
 }
 
-// Save the best score.
-function saveBestScore() {
-  try {
-    localStorage.setItem(
-      "wingsForWaterBest",
-      String(best)
-    );
-  } catch (error) {
-    // The game can still run if storage is unavailable.
-  }
-}
+function updateScore() {
+  scoreDisplay.textContent = score;
 
-// Set up the bird and clear the previous round.
-function resetGame() {
-  bird = {
-    x: 145,
-    y: canvas.height / 2,
-    radius: 16,
-    velocity: 0
-  };
-
-  pipes = [];
-  waterDrops = [];
-  penaltyObstacles = [];
-  confetti = [];
-
-  score = 0;
-  frame = 0;
-
-  gameRunning = false;
-  gameOver = false;
-  gameWon = false;
-  paused = false;
-
-  updateScoreDisplay();
-
-  startButton.textContent = "START GAME";
-  pauseButton.textContent = "PAUSE";
-  pauseButton.disabled = true;
-
-  if (statusText) {
-    statusText.textContent =
-      "Ready for takeoff? Start your game!";
-  }
-}
-
-// Start or restart the game.
-function startGame() {
-  resetGame();
-
-  gameRunning = true;
-  pauseButton.disabled = false;
-  startButton.textContent = "RESTART GAME";
-
-  if (statusText) {
-    statusText.textContent =
-      "Collect yellow water drops and avoid red obstacles!";
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem("wingsForWaterBest", bestScore);
+    bestDisplay.textContent = bestScore;
   }
 
-  addPipe();
-}
+  updateProgress();
+  checkMilestones();
 
-// Make the bird flap upward.
-function flap() {
-  if (gameOver || gameWon || paused) {
-    return;
-  }
-
-  if (!gameRunning) {
-    startGame();
-  }
-
-  bird.velocity = flapStrength;
-}
-
-// Pause or resume gameplay.
-function togglePause() {
-  if (!gameRunning || gameOver || gameWon) {
-    return;
-  }
-
-  paused = !paused;
-
-  if (paused) {
-    pauseButton.textContent = "RESUME";
-
-    if (statusText) {
-      statusText.textContent =
-        "Game paused. Resume when you're ready.";
-    }
-  } else {
-    pauseButton.textContent = "PAUSE";
-
-    if (statusText) {
-      statusText.textContent =
-        "Back in action! Collect drops and avoid obstacles.";
-    }
-  }
-}
-
-// Create a pair of pipes with a gap between them.
-function addPipe() {
-  const minimumTop = 45;
-  const maximumTop =
-    canvas.height - pipeGap - 75;
-
-  const topHeight =
-    minimumTop +
-    Math.random() * (maximumTop - minimumTop);
-
-  pipes.push({
-    x: canvas.width + 10,
-    topHeight: topHeight,
-    passed: false
-  });
-}
-
-// Create a collectible yellow water drop.
-function addWaterDrop() {
-  waterDrops.push({
-    x: canvas.width + 20,
-    y: 60 + Math.random() * (canvas.height - 120),
-    radius: 12
-  });
-}
-
-// Create a red obstacle that costs points.
-function addPenaltyObstacle() {
-  penaltyObstacles.push({
-    x: canvas.width + 20,
-    y: 60 + Math.random() * (canvas.height - 120),
-    radius: 15
-  });
-}
-
-// Update the score, best score, and progress bar.
-function updateScoreDisplay() {
-  scoreElement.textContent = score;
-  bestElement.textContent = best;
-
-  const progress = Math.min(
-    (score / winScore) * 100,
-    100
-  );
-
-  if (progressLabel) {
-    progressLabel.textContent =
-      `${score} / ${winScore} points`;
-  }
-
-  if (progressFill) {
-    progressFill.style.width = `${progress}%`;
-  }
-
-  if (progressTrack) {
-    progressTrack.setAttribute(
-      "aria-valuenow",
-      score
-    );
-  }
-}
-
-// Add or subtract points.
-function changeScore(amount) {
-  score = Math.max(0, score + amount);
-
-  if (score > best) {
-    best = score;
-    saveBestScore();
-  }
-
-  updateScoreDisplay();
-
-  if (statusText) {
-    if (amount > 0) {
-      statusText.textContent =
-        `+${amount} point${amount === 1 ? "" : "s"}!`;
-    } else if (amount < 0) {
-      statusText.textContent =
-        `${amount} points! Avoid the red obstacles.`;
-    }
-  }
-
-  // Win when the player reaches the target score.
-  if (score >= winScore) {
+  if (score >= settings.winScore) {
     winGame();
   }
 }
 
-// Update the game while it is active.
-function update() {
-  if (
-    !gameRunning ||
-    paused ||
-    gameOver ||
-    gameWon
-  ) {
-    return;
+function updateProgress() {
+  const percentage = Math.min((score / settings.winScore) * 100, 100);
+
+  if (progressBar) {
+    progressBar.style.width = percentage + "%";
+  }
+}
+
+function checkMilestones() {
+  const percentage = (score / settings.winScore) * 100;
+
+  milestones.forEach((milestone, index) => {
+    if (
+      percentage >= milestone.percentage &&
+      !reachedMilestones.includes(index)
+    ) {
+      reachedMilestones.push(index);
+
+      if (milestoneMessage) {
+        milestoneMessage.textContent = milestone.message;
+      }
+    }
+  });
+}
+
+function resetGame() {
+  score = 0;
+  frame = 0;
+  pipes = [];
+  waterDrops = [];
+  obstacles = [];
+  particles = [];
+  reachedMilestones = [];
+
+  bird.y = canvas.height / 2;
+  bird.velocity = 0;
+  bird.rotation = 0;
+
+  gameRunning = false;
+  gameOver = false;
+  gameWon = false;
+
+  scoreDisplay.textContent = "0";
+  statusDisplay.textContent = "Ready to fly! Press Start or tap the game.";
+  
+  if (milestoneMessage) {
+    milestoneMessage.textContent = "";
   }
 
-  frame++;
+  updateProgress();
+  draw();
+}
 
-  // Gravity pulls the bird downward.
-  bird.velocity += gravity;
-  bird.y += bird.velocity;
+function startGame() {
+  if (gameRunning) return;
 
-  // Generate new objects over time.
-  if (frame % 100 === 0) {
+  if (gameOver || gameWon) {
+    resetGame();
+  }
+
+  applyDifficulty();
+  gameRunning = true;
+  gameOver = false;
+  gameWon = false;
+
+  statusDisplay.textContent = "Flying! Avoid the pipes and collect water drops.";
+
+  if (pipes.length === 0) {
     addPipe();
   }
 
-  if (frame % 90 === 0) {
-    addWaterDrop();
-  }
-
-  if (frame % 145 === 0) {
-    addPenaltyObstacle();
-  }
-
-  // Move pipes and award points for passing them.
-  for (let i = pipes.length - 1; i >= 0; i--) {
-    const pipe = pipes[i];
-
-    pipe.x -= pipeSpeed;
-
-    if (
-      !pipe.passed &&
-      pipe.x + pipeWidth < bird.x
-    ) {
-      pipe.passed = true;
-      changeScore(1);
-
-      if (gameWon) {
-        return;
-      }
-    }
-
-    if (pipe.x + pipeWidth < 0) {
-      pipes.splice(i, 1);
-    }
-  }
-
-  // Move collectible drops and award points.
-  for (
-    let i = waterDrops.length - 1;
-    i >= 0;
-    i--
-  ) {
-    const drop = waterDrops[i];
-
-    drop.x -= pipeSpeed;
-
-    if (touchingCircle(bird, drop)) {
-      waterDrops.splice(i, 1);
-      changeScore(1);
-
-      if (gameWon) {
-        return;
-      }
-    } else if (drop.x + drop.radius < 0) {
-      waterDrops.splice(i, 1);
-    }
-  }
-
-  // Move penalty obstacles and deduct points.
-  for (
-    let i = penaltyObstacles.length - 1;
-    i >= 0;
-    i--
-  ) {
-    const obstacle = penaltyObstacles[i];
-
-    obstacle.x -= pipeSpeed;
-
-    if (touchingCircle(bird, obstacle)) {
-      penaltyObstacles.splice(i, 1);
-      changeScore(-2);
-    } else if (obstacle.x + obstacle.radius < 0) {
-      penaltyObstacles.splice(i, 1);
-    }
-  }
-
-  // Check for collisions after moving everything.
-  checkCollision();
+  cancelAnimationFrame(animationId);
+  gameLoop();
 }
 
-// Check whether two circular objects touch.
-function touchingCircle(first, second) {
-  const distance = Math.hypot(
-    first.x - second.x,
-    first.y - second.y
-  );
+function pauseGame() {
+  if (!gameRunning) return;
 
-  return distance <
-    first.radius + second.radius;
+  gameRunning = false;
+  statusDisplay.textContent = "Game paused. Press Resume to continue.";
+  cancelAnimationFrame(animationId);
+  draw();
 }
 
-// Check whether the bird hits a pipe or boundary.
-function checkCollision() {
-  if (
-    bird.y - bird.radius <= 0 ||
-    bird.y + bird.radius >= canvas.height
-  ) {
-    endGame();
-    return;
-  }
-
-  for (const pipe of pipes) {
-    const overlapsHorizontally =
-      bird.x + bird.radius > pipe.x &&
-      bird.x - bird.radius < pipe.x + pipeWidth;
-
-    if (!overlapsHorizontally) {
-      continue;
-    }
-
-    const insideGap =
-      bird.y - bird.radius > pipe.topHeight &&
-      bird.y + bird.radius <
-        pipe.topHeight + pipeGap;
-
-    if (!insideGap) {
-      endGame();
-      return;
-    }
-  }
-}
-
-// End the round after a collision.
 function endGame() {
   gameRunning = false;
   gameOver = true;
-  paused = false;
-
-  startButton.textContent = "PLAY AGAIN";
-  pauseButton.textContent = "PAUSE";
-  pauseButton.disabled = true;
-
-  if (statusText) {
-    statusText.textContent =
-      `Game over! You scored ${score}. Try to beat your best!`;
-  }
+  statusDisplay.textContent = "Game over! Press Start to try again.";
+  cancelAnimationFrame(animationId);
+  draw();
 }
 
-// Celebrate reaching the winning score.
 function winGame() {
+  if (gameWon) return;
+
   gameRunning = false;
   gameWon = true;
-  gameOver = false;
-  paused = false;
-
-  startButton.textContent = "PLAY AGAIN";
-  pauseButton.textContent = "PAUSE";
-  pauseButton.disabled = true;
-
-  if (statusText) {
-    statusText.textContent =
-      "Congratulations! You reached 10 points! 🎉";
-  }
-
+  statusDisplay.textContent = "🎉 You did it! You reached the goal!";
   createConfetti();
+  draw();
 }
 
-// Create confetti using the charity: water palette.
+function flap() {
+  if (!gameRunning) {
+    if (!gameOver && !gameWon) {
+      startGame();
+    } else {
+      startGame();
+    }
+  }
+
+  if (gameRunning) {
+    bird.velocity = settings.flapStrength;
+  }
+}
+
+function addPipe() {
+  const minimumGapY = 40;
+  const maximumGapY = canvas.height - settings.pipeGap - 40;
+
+  const gapY =
+    minimumGapY + Math.random() * (maximumGapY - minimumGapY);
+
+  pipes.push({
+    x: canvas.width,
+    width: 65,
+    gapY: gapY,
+    gap: settings.pipeGap,
+    passed: false
+  });
+
+  // Add an occasional water drop between the pipes.
+  if (Math.random() < 0.65) {
+    waterDrops.push({
+      x: canvas.width + 75,
+      y: gapY + settings.pipeGap / 2,
+      radius: 10,
+      collected: false
+    });
+  }
+
+  // Add occasional obstacles for an extra challenge.
+  if (Math.random() < 0.25) {
+    obstacles.push({
+      x: canvas.width + 140,
+      y: gapY + settings.pipeGap / 2,
+      radius: 13,
+      hit: false
+    });
+  }
+}
+
+function updateBird() {
+  bird.velocity += settings.gravity;
+  bird.y += bird.velocity;
+
+  bird.rotation = Math.min(
+    Math.max(bird.velocity * 0.07, -0.5),
+    0.8
+  );
+
+  if (bird.y < 0 || bird.y + bird.height > canvas.height) {
+    endGame();
+  }
+}
+
+function updatePipes() {
+  pipes.forEach((pipe) => {
+    pipe.x -= settings.pipeSpeed;
+
+    const birdRight = bird.x + bird.width;
+    const birdBottom = bird.y + bird.height;
+
+    const horizontalCollision =
+      birdRight > pipe.x && bird.x < pipe.x + pipe.width;
+
+    const outsideGap =
+      bird.y < pipe.gapY ||
+      birdBottom > pipe.gapY + pipe.gap;
+
+    if (horizontalCollision && outsideGap) {
+      endGame();
+    }
+
+    if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+      pipe.passed = true;
+      score++;
+      updateScore();
+    }
+  });
+
+  pipes = pipes.filter((pipe) => pipe.x + pipe.width > 0);
+}
+
+function updateWaterDrops() {
+  waterDrops.forEach((drop) => {
+    drop.x -= settings.pipeSpeed;
+
+    const birdCenterX = bird.x + bird.width / 2;
+    const birdCenterY = bird.y + bird.height / 2;
+
+    const distance = Math.hypot(
+      birdCenterX - drop.x,
+      birdCenterY - drop.y
+    );
+
+    if (!drop.collected && distance < drop.radius + 14) {
+      drop.collected = true;
+      score++;
+      updateScore();
+      statusDisplay.textContent = "💧 Water drop collected! +1 point!";
+    }
+  });
+
+  waterDrops = waterDrops.filter(
+    (drop) => drop.x > -20 && !drop.collected
+  );
+}
+
+function updateObstacles() {
+  obstacles.forEach((obstacle) => {
+    obstacle.x -= settings.pipeSpeed;
+
+    const birdCenterX = bird.x + bird.width / 2;
+    const birdCenterY = bird.y + bird.height / 2;
+
+    const distance = Math.hypot(
+      birdCenterX - obstacle.x,
+      birdCenterY - obstacle.y
+    );
+
+    if (!obstacle.hit && distance < obstacle.radius + 12) {
+      obstacle.hit = true;
+      score = Math.max(0, score - 2);
+      updateScore();
+      statusDisplay.textContent = "⚠️ Obstacle hit! -2 points.";
+    }
+  });
+
+  obstacles = obstacles.filter(
+    (obstacle) => obstacle.x > -30 && !obstacle.hit
+  );
+}
+
+function drawBackground() {
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#dff5ff");
+  gradient.addColorStop(1, "#ffffff");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Clouds
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+
+  drawCloud(80, 75);
+  drawCloud(300, 125);
+  drawCloud(470, 55);
+
+  // Ground
+  ctx.fillStyle = "#f4c542";
+  ctx.fillRect(0, canvas.height - 12, canvas.width, 12);
+}
+
+function drawCloud(x, y) {
+  ctx.beginPath();
+  ctx.arc(x, y, 18, 0, Math.PI * 2);
+  ctx.arc(x + 20, y - 8, 22, 0, Math.PI * 2);
+  ctx.arc(x + 43, y, 17, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBird() {
+  ctx.save();
+
+  ctx.translate(
+    bird.x + bird.width / 2,
+    bird.y + bird.height / 2
+  );
+
+  ctx.rotate(bird.rotation);
+
+  // Bird body
+  ctx.fillStyle = "#f4c542";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 16, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wing
+  ctx.fillStyle = "#e4a900";
+  ctx.beginPath();
+  ctx.ellipse(-4, 3, 8, 5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = "#172b4d";
+  ctx.beginPath();
+  ctx.arc(7, -4, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = "#f07835";
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(23, 3);
+  ctx.lineTo(14, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawPipes() {
+  pipes.forEach((pipe) => {
+    ctx.fillStyle = "#178b68";
+
+    // Top pipe
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.gapY);
+
+    // Bottom pipe
+    ctx.fillRect(
+      pipe.x,
+      pipe.gapY + pipe.gap,
+      pipe.width,
+      canvas.height - pipe.gapY - pipe.gap
+    );
+
+    // Pipe edges
+    ctx.fillStyle = "#106b50";
+    ctx.fillRect(pipe.x - 4, pipe.gapY - 12, pipe.width + 8, 12);
+    ctx.fillRect(
+      pipe.x - 4,
+      pipe.gapY + pipe.gap,
+      pipe.width + 8,
+      12
+    );
+  });
+}
+
+function drawWaterDrops() {
+  waterDrops.forEach((drop) => {
+    ctx.fillStyle = "#20a9e0";
+    ctx.beginPath();
+    ctx.moveTo(drop.x, drop.y - drop.radius);
+    ctx.quadraticCurveTo(
+      drop.x + drop.radius + 2,
+      drop.y + 2,
+      drop.x,
+      drop.y + drop.radius
+    );
+    ctx.quadraticCurveTo(
+      drop.x - drop.radius - 2,
+      drop.y + 2,
+      drop.x,
+      drop.y - drop.radius
+    );
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(drop.x - 3, drop.y - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawObstacles() {
+  obstacles.forEach((obstacle) => {
+    ctx.fillStyle = "#e74c3c";
+    ctx.beginPath();
+    ctx.arc(
+      obstacle.x,
+      obstacle.y,
+      obstacle.radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.strokeStyle = "#a93226";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+}
+
 function createConfetti() {
-  confetti = [];
-
-  const confettiColors = [
-    colors.yellow,
-    colors.blue,
-    colors.lightBlue,
-    colors.green,
-    colors.orange,
-    colors.red,
-    colors.darkGreen,
-    colors.pink
-  ];
-
-  for (let i = 0; i < 120; i++) {
-    confetti.push({
+  for (let i = 0; i < 60; i++) {
+    particles.push({
       x: Math.random() * canvas.width,
       y: -Math.random() * canvas.height,
       size: 4 + Math.random() * 5,
-      speed: 1.5 + Math.random() * 3.5,
-      drift: (Math.random() - 0.5) * 2,
-      color: confettiColors[
-        Math.floor(Math.random() * confettiColors.length)
-      ]
+      speed: 1 + Math.random() * 3
     });
   }
 }
 
-// Draw the game's background.
-function drawBackground() {
-  const gradient = ctx.createLinearGradient(
-    0, 0, 0, canvas.height
-  );
-
-  gradient.addColorStop(0, "#071A32");
-  gradient.addColorStop(0.6, "#145B82");
-  gradient.addColorStop(1, colors.navy);
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Stars.
-  ctx.fillStyle = colors.lightBlue;
-
-  for (let i = 0; i < 50; i++) {
-    const x = (i * 173) % canvas.width;
-    const y = (i * 83) % 210;
-
-    ctx.globalAlpha = 0.45 + (i % 5) * 0.1;
-    ctx.fillRect(x, y, 2, 2);
-  }
-
-  ctx.globalAlpha = 1;
-
-  // Futuristic city skyline.
-  ctx.fillStyle = "#0A2838";
-
-  for (let x = 0; x < canvas.width; x += 60) {
-    const height = 35 + ((x * 17) % 90);
-
-    ctx.fillRect(
-      x,
-      canvas.height - height,
-      45,
-      height
-    );
-  }
-
-  // Blue building lights.
-  ctx.fillStyle = colors.blue;
-
-  for (let x = 10; x < canvas.width; x += 60) {
-    for (
-      let y = canvas.height - 60;
-      y > canvas.height - 120;
-      y -= 20
-    ) {
-      ctx.fillRect(x, y, 4, 6);
-    }
-  }
-
-  // Occasional yellow building lights.
-  ctx.fillStyle = colors.yellow;
-
-  for (let x = 30; x < canvas.width; x += 120) {
-    ctx.fillRect(x, canvas.height - 90, 4, 6);
-  }
-}
-
-// Draw the futuristic bird.
-function drawBird() {
-  ctx.save();
-  ctx.translate(bird.x, bird.y);
-
-  const angle = Math.min(
-    Math.max(bird.velocity * 0.05, -0.35),
-    0.6
-  );
-
-  ctx.rotate(angle);
-
-  // Blue glow.
-  ctx.shadowBlur = 15;
-  ctx.shadowColor = colors.blue;
-
-  // Body.
-  ctx.fillStyle = colors.white;
-
-  ctx.beginPath();
-  ctx.arc(
-    0, 0,
-    bird.radius,
-    0, Math.PI * 2
-  );
-  ctx.fill();
-
-  // Blue wing.
-  ctx.fillStyle = colors.blue;
-
-  ctx.beginPath();
-  ctx.moveTo(-6, 3);
-  ctx.lineTo(-24, 12);
-  ctx.lineTo(-8, 16);
-  ctx.closePath();
-  ctx.fill();
-
-  // Eye.
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = colors.navy;
-
-  ctx.beginPath();
-  ctx.arc(7, -5, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Yellow beak.
-  ctx.fillStyle = colors.yellow;
-
-  ctx.beginPath();
-  ctx.moveTo(14, 0);
-  ctx.lineTo(26, 5);
-  ctx.lineTo(14, 9);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
-}
-
-// Draw a pair of pipes.
-function drawPipe(pipe) {
-  const bottomY = pipe.topHeight + pipeGap;
-
-  drawPipeBody(
-    pipe.x,
-    0,
-    pipeWidth,
-    pipe.topHeight,
-    true
-  );
-
-  drawPipeBody(
-    pipe.x,
-    bottomY,
-    pipeWidth,
-    canvas.height - bottomY,
-    false
-  );
-}
-
-// Draw a single pipe using blue and light blue.
-function drawPipeBody(x, y, width, height, topPipe) {
-  const gradient = ctx.createLinearGradient(
-    x, 0, x + width, 0
-  );
-
-  gradient.addColorStop(0, colors.blue);
-  gradient.addColorStop(0.5, colors.lightBlue);
-  gradient.addColorStop(1, "#1765A8");
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(x, y, width, height);
-
-  // Blue accent stripe.
-  ctx.fillStyle = colors.blue;
-  ctx.fillRect(x + 7, y, 5, height);
-
-  // Light blue pipe cap.
-  ctx.fillStyle = colors.lightBlue;
-
-  const capHeight = 15;
-  const capY = topPipe ? height - capHeight : y;
-
-  ctx.fillRect(
-    x - 5,
-    capY,
-    width + 10,
-    capHeight
-  );
-
-  // Yellow edge highlight.
-  ctx.fillStyle = colors.yellow;
-
-  if (topPipe) {
-    ctx.fillRect(
-      x - 5,
-      capY,
-      width + 10,
-      3
-    );
-  } else {
-    ctx.fillRect(
-      x - 5,
-      capY + capHeight - 3,
-      width + 10,
-      3
-    );
-  }
-}
-
-// Draw a yellow water drop collectible.
-function drawWaterDrop(drop) {
-  ctx.save();
-  ctx.translate(drop.x, drop.y);
-
-  ctx.shadowBlur = 14;
-  ctx.shadowColor = colors.yellow;
-  ctx.fillStyle = colors.yellow;
-
-  ctx.beginPath();
-  ctx.moveTo(0, -drop.radius);
-
-  ctx.bezierCurveTo(
-    drop.radius * 0.55,
-    -drop.radius * 0.2,
-    drop.radius,
-    drop.radius * 0.35,
-    drop.radius,
-    drop.radius * 0.6
-  );
-
-  ctx.arc(
-    0,
-    drop.radius * 0.35,
-    drop.radius * 0.8,
-    0,
-    Math.PI,
-    false
-  );
-
-  ctx.bezierCurveTo(
-    -drop.radius,
-    drop.radius * 0.35,
-    -drop.radius * 0.55,
-    -drop.radius * 0.2,
-    0,
-    -drop.radius
-  );
-
-  ctx.fill();
-
-  // Small highlight inside the drop.
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = colors.white;
-  ctx.globalAlpha = 0.7;
-
-  ctx.beginPath();
-  ctx.arc(-3, 3, 2, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-// Draw a red penalty obstacle.
-function drawPenaltyObstacle(obstacle) {
-  ctx.save();
-
-  ctx.shadowBlur = 12;
-  ctx.shadowColor = colors.red;
-  ctx.fillStyle = colors.red;
-
-  ctx.beginPath();
-  ctx.arc(
-    obstacle.x,
-    obstacle.y,
-    obstacle.radius,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  // White minus sign shows the score penalty.
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = colors.white;
-  ctx.font = "bold 20px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    "−",
-    obstacle.x,
-    obstacle.y
-  );
-
-  ctx.restore();
-}
-
-// Draw start, pause, game-over, and win messages.
-function drawMessage() {
-  if (gameRunning && !paused) {
-    return;
-  }
-
-  ctx.fillStyle = "rgba(7, 19, 30, 0.78)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  let title = "READY TO FLY?";
-  let subtitle = "Press SPACE, click, or tap to start";
-  let titleColor = colors.yellow;
-
-  if (paused) {
-    title = "PAUSED";
-    subtitle = "Press P or select Resume to continue";
-    titleColor = colors.lightBlue;
-  } else if (gameOver) {
-    title = "GAME OVER";
-    subtitle = `Final score: ${score} — Try again!`;
-    titleColor = colors.red;
-  } else if (gameWon) {
-    title = "YOU DID IT!";
-    subtitle = "10 points! Keep learning about clean water.";
-    titleColor = colors.yellow;
-  }
-
-  ctx.fillStyle = titleColor;
-  ctx.font = "bold 36px Arial";
-
-  ctx.fillText(
-    title,
-    canvas.width / 2,
-    canvas.height / 2 - 20
-  );
-
-  ctx.fillStyle = colors.white;
-  ctx.font = "16px Arial";
-
-  ctx.fillText(
-    subtitle,
-    canvas.width / 2,
-    canvas.height / 2 + 22
-  );
-}
-
-// Draw and animate the confetti celebration.
 function drawConfetti() {
-  for (const piece of confetti) {
-    ctx.fillStyle = piece.color;
-
+  particles.forEach((particle) => {
+    ctx.fillStyle = "#f4c542";
     ctx.fillRect(
-      piece.x,
-      piece.y,
-      piece.size,
-      piece.size * 1.5
+      particle.x,
+      particle.y,
+      particle.size,
+      particle.size
     );
 
-    piece.x += piece.drift;
-    piece.y += piece.speed;
+    particle.y += particle.speed;
 
-    if (piece.y > canvas.height) {
-      piece.y = -piece.size;
-      piece.x = Math.random() * canvas.width;
+    if (particle.y > canvas.height) {
+      particle.y = -10;
+      particle.x = Math.random() * canvas.width;
     }
-
-    if (piece.x < 0) {
-      piece.x = canvas.width;
-    } else if (piece.x > canvas.width) {
-      piece.x = 0;
-    }
-  }
+  });
 }
 
-// Draw the complete game scene.
 function draw() {
   drawBackground();
-
-  for (const pipe of pipes) {
-    drawPipe(pipe);
-  }
-
-  for (const drop of waterDrops) {
-    drawWaterDrop(drop);
-  }
-
-  for (const obstacle of penaltyObstacles) {
-    drawPenaltyObstacle(obstacle);
-  }
-
-  if (bird) {
-    drawBird();
-  }
-
-  drawMessage();
+  drawPipes();
+  drawWaterDrops();
+  drawObstacles();
+  drawBird();
 
   if (gameWon) {
     drawConfetti();
+
+    ctx.fillStyle = "#172b4d";
+    ctx.font = "bold 28px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("YOU DID IT!", canvas.width / 2, canvas.height / 2);
+  }
+
+  if (gameOver) {
+    ctx.fillStyle = "rgba(23, 43, 77, 0.75)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 25px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+    ctx.font = "16px Montserrat, sans-serif";
+    ctx.fillText(
+      "Press Start to try again",
+      canvas.width / 2,
+      canvas.height / 2 + 30
+    );
   }
 }
 
-// Keep one animation loop running.
 function gameLoop() {
-  update();
-  draw();
+  if (!gameRunning) return;
 
-  requestAnimationFrame(gameLoop);
-}
+  frame++;
 
-// Start and restart button.
-startButton.addEventListener("click", startGame);
+  updateBird();
 
-// Pause and resume button.
-pauseButton.addEventListener("click", togglePause);
-
-// Reset button clears the current round.
-resetButton.addEventListener("click", function () {
-  resetGame();
-
-  if (statusText) {
-    statusText.textContent =
-      "Game reset! Start a new round whenever you're ready.";
-  }
-});
-
-// Mouse and touchscreen controls.
-canvas.addEventListener("pointerdown", function (event) {
-  event.preventDefault();
-
-  // Allow a tap to restart after a round ends.
-  if (gameOver || gameWon) {
-    startGame();
-    flap();
+  if (!gameRunning) {
+    draw();
     return;
   }
 
+  updatePipes();
+  updateWaterDrops();
+  updateObstacles();
+
+  if (frame % settings.pipeSpawnRate === 0) {
+    addPipe();
+  }
+
+  draw();
+
+  if (gameRunning) {
+    animationId = requestAnimationFrame(gameLoop);
+  }
+}
+
+startButton.addEventListener("click", startGame);
+
+pauseButton.addEventListener("click", pauseGame);
+
+resetButton.addEventListener("click", () => {
+  cancelAnimationFrame(animationId);
+  applyDifficulty();
+  resetGame();
+});
+
+difficultySelect.addEventListener("change", () => {
+  cancelAnimationFrame(animationId);
+  applyDifficulty();
+  resetGame();
+  statusDisplay.textContent =
+    "Difficulty changed! Press Start when you're ready.";
+});
+
+canvas.addEventListener("pointerdown", () => {
   flap();
 });
 
-// Keyboard controls.
-document.addEventListener("keydown", function (event) {
-  // Ignore game shortcuts while typing.
-  if (
-    event.target instanceof HTMLElement &&
-    (
-      event.target.isContentEditable ||
-      ["INPUT", "TEXTAREA", "SELECT"].includes(
-        event.target.tagName
-      )
-    )
-  ) {
-    return;
-  }
-
+document.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
-
-    if (gameOver || gameWon) {
-      startGame();
-    }
-
     flap();
   }
 
-  if (
-    event.key.toLowerCase() === "p" ||
-    event.key === "Escape"
-  ) {
-    togglePause();
+  if (event.code === "KeyP" || event.code === "Escape") {
+    pauseGame();
   }
 });
 
-// Mobile navigation menu.
-if (menuToggle && mainNav) {
-  menuToggle.addEventListener("click", function () {
-    const isOpen = mainNav.classList.toggle("open");
-
-    menuToggle.setAttribute(
-      "aria-expanded",
-      String(isOpen)
-    );
-
-    menuToggle.setAttribute(
-      "aria-label",
-      isOpen
-        ? "Close navigation menu"
-        : "Open navigation menu"
-    );
-
-    menuToggle.textContent = isOpen ? "✕" : "☰";
-  });
-
-  // Close the menu when a link is selected.
-  mainNav.querySelectorAll("a").forEach(function (link) {
-    link.addEventListener("click", function () {
-      mainNav.classList.remove("open");
-
-      menuToggle.setAttribute(
-        "aria-expanded",
-        "false"
-      );
-
-      menuToggle.setAttribute(
-        "aria-label",
-        "Open navigation menu"
-      );
-
-      menuToggle.textContent = "☰";
-    });
-  });
-}
-
-// Initialize the game.
-bestElement.textContent = best;
-
+// Initial setup
+applyDifficulty();
 resetGame();
-requestAnimationFrame(gameLoop);
